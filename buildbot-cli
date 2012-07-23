@@ -1,0 +1,162 @@
+#!/usr/bin/python
+# Copyright 2012 Dafydd Crosby <dafydd@dafyddcrosby.com>
+# All rights reserved.
+
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+
+# 1. Redistributions of source code must retain the above copyright notice,
+#    this list of conditions and the following disclaimer.
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS 
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
+# POSSIBILITY OF SUCH DAMAGE.
+"""
+CLI for buildbot operations
+
+Usage:
+    buildbot-cli [options]
+
+The server and buildname are *required*
+
+-b / --build
+    The name of the build
+
+-b / --branch
+    The name of the branch to build with forcebuild (not yet implemented)
+
+--buildappend
+    Append a string to the name of the build (for scripting)
+
+-c / --comments
+    Comments to use for forcebuild
+
+-C / --config
+    Use config file (not yet implemented)
+
+--debug
+    Debug mode
+
+-f / --forcebuild
+    Have buildbot build the package
+
+-R / --revision
+    Revision to build with forcebuild (not yet implemented)
+
+-s / --server
+    URL of the buildbot server
+
+-S / --status
+    Return the status of the build (not yet implemented)
+
+-u / --username
+    Username to use with force build (not yet implemented)
+
+"""
+import urllib
+import getopt
+import sys
+import os
+try:
+    import ConfigParser as confparse
+except:
+    import configparser as confparse
+
+def force_build(server, buildname, debug=False):
+    """
+    Have buildbot start a build
+    """
+    url = server + "/builders/" + buildname + "/force"
+    if debug:
+        print("URL is %s", url)
+    f = urllib.urlopen(url)
+    return f
+
+def status(server, buildname, debug=False):
+    """
+    STUB
+    Return status of build
+    """
+    pass
+
+def main():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],
+            'b:cfs:S',
+            ["build=",
+             "buildappend=",
+             "config=",
+             "debug",
+             "forcebuild",
+             "server="
+             "status"])
+    except getopt.GetoptError, err:
+        # print help information and exit:
+        print(str(err))
+        sys.exit(1)
+    
+    debug = False
+    config_file = os.path.expanduser("~/.buildbot-cli")
+    build = ""
+    buildappend = ""
+    forcebuild = False
+    status = False
+    for opt, val in opts:
+        if opt in ['-C', '--config']:
+            config_file = val
+
+    config = confparse.ConfigParser()
+    config.read(config_file)
+
+    if config.has_option('settings', 'server'):
+        server = config.get('settings', 'server')
+
+    if config.has_option('settings', 'build'):
+        build = config.get('settings', 'build')
+
+    if config.has_option('settings', 'buildappend'):
+        buildappend = config.get('settings', 'buildappend')
+
+
+    for opt, val in opts:
+        if opt in ['-b', '--build']:
+            build = val
+        elif opt in ('--buildappend'):
+            buildappend = val
+        elif opt in ('--debug'):
+            debug = True
+        elif opt in ['-f', '--forcebuild']:
+            forcebuild = True
+        elif opt in ['-s', '--server']:
+            server = val
+        elif opt in ['-S', '--status']:
+            status = True
+
+    # Hooray for easier scripting
+    buildname = build + buildappend
+
+    if forcebuild:
+        if server != "" and buildname != "":
+            force_build(server, buildname, debug=debug)
+        else:
+            print(__doc__)
+            sys.exit(1)
+    elif status:
+        status(server, buildname, debug=debug)
+    else:
+        print(__doc__)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    sys.exit(main())
